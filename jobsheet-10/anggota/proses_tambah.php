@@ -1,0 +1,50 @@
+<?php
+session_start();
+require __DIR__ . '/../includes/auth.php';
+require __DIR__ . '/../includes/koneksi.php';
+
+$nama = trim($_POST['nama'] ?? '');
+$noAnggota = trim($_POST['no_anggota'] ?? '');
+$alamat = trim($_POST['alamat'] ?? '');
+$noHp = trim($_POST['no_hp'] ?? '');
+
+$errors = [];
+if ($nama === '') {
+    $errors[] = "Nama wajib diisi.";
+}
+if ($noAnggota === '') {
+    $errors[] = "No. Anggota wajib diisi.";
+}
+if ($noHp !== '' && !preg_match('/^[0-9]+$/', $noHp)) {
+    $errors[] = "No. HP hanya boleh berisi angka.";
+}
+
+if (!empty($errors)) {
+    $_SESSION['flash'] = ['type' => 'error', 'pesan' => implode(' ', $errors)];
+    header('Location: tambah.php');
+    exit;
+}
+
+try {
+    $stmt = $pdo->prepare("INSERT INTO anggota (no_anggota, nama, alamat, no_hp) VALUES (:no_anggota, :nama, :alamat, :no_hp)");
+    $stmt->execute([
+        ':no_anggota' => $noAnggota,
+        ':nama'       => $nama,
+        ':alamat'     => $alamat,
+        ':no_hp'      => $noHp
+    ]);
+
+        // pesan sukses dengan format array
+        $_SESSION['flash'] = ['type' => 'success', 'pesan' => 'Anggota berhasil ditambahkan.'];
+        header('Location: list.php');
+        exit;
+
+} catch (PDOException $e) {
+    if ($e->getCode() == '23505') {
+        $_SESSION['flash'] = ['type' => 'error', 'pesan' => 'Gagal: No. Anggota sudah dipakai, gunakan nomor lain.'];
+    } else {
+        $_SESSION['flash'] = ['type' => 'error', 'pesan' => 'Gagal menyimpan ke database: ' . $e->getMessage()];
+    }
+header('Location: list.php');
+exit;
+}
